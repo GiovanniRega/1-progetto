@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Gestione Inventario</title>
+  <style>
+    /* ===== STILE BASE ===== */
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: linear-gradient(135deg, #1295ec, #f0f9ff);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      transition: background 0.6s;
+      animation: fadeIn 0.8s ease-in;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 15px;
+      width: 450px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      text-align: center;
+      animation: fadeIn 0.8s ease-in;
+      position: relative; /* necessario per posizionare il bottone dentro */
+}
+    
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(15px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    h2 {
+      color: #2563eb;
+      margin-bottom: 20px;
+      animation: fadeIn 0.8s ease-in;
+    }
+
+    input {
+      width: 90%;
+      padding: 10px;
+      margin: 6px 0;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 15px;
+      transition: border-color 0.3s;
+      animation: fadeIn 0.8s ease-in;
+    }
+
+    input:focus {
+      border-color: #2563eb;
+      outline: none;
+      animation: fadeIn 0.8s ease-in;
+    }
+
+    button {
+      width: 95%;
+      margin: 6px 0;
+      padding: 10px;
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      cursor: pointer;
+      transition: background 0.3s, transform 0.1s;
+      animation: fadeIn 0.8s ease-in;
+    }
+
+    button:hover {
+      background: #1d4ed8;
+      transform: scale(1.02);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+      font-size: 14px;
+      animation: fadeIn 0.8s ease-in;
+    }
+
+    th, td {
+      padding: 8px;
+      border-bottom: 1px solid #ddd;
+      animation: fadeIn 0.8s ease-in;
+    }
+
+    th {
+      background: #eff6ff;
+      color: #1e40af;
+      animation: fadeIn 0.8s ease-in;
+    }
+
+    tr:hover {
+      background-color: #f9fafb;
+    }
+
+    .delete-btn {
+      background: #ef4444;
+      border: none;
+      color: white;
+      padding: 5px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      animation: fadeIn 0.8s ease-in;
+    }
+
+    .delete-btn:hover {
+      background: #dc2626;
+    }
+
+    /* Stile per il pop-up  */
+    .pop {
+      display:flex;
+      bottom: 0%;
+      right: 50px;
+      left: -190px;
+      background: #ef4444; /* rosso errore */
+      color: white;
+      padding: 20px 16px;
+      border-radius: 8px;
+      font-family: sans-serif;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+      opacity: 0;
+      transition: opacity 0.3s;
+      z-index: 9999;
+    }
+    .pop.show {
+      opacity: 1;
+    }
+    div{animation: fadeIn 0.8s ease-in;}
+   
+
+    .logout-btn {
+      position: absolute;  /* posizionamento dentro il contenitore */
+      top: 10px;
+      right: 10px;
+      background: #000;
+      color: #fff;
+      padding: 7px 17px;
+      font-size: 12px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      animation: fadeIn 0.8s ease-in;
+      transition: background 0.2s;
+      width: auto;        /* ✅ evita che si allarghi */
+}
+    
+    
+    .logout-btn:hover {
+      background: #ff0000;
+    }
+
+    .footer {
+      font-size: 12px;
+      color: #888;
+      margin-top: 15px;
+      animation: fadeIn 0.8s ease-in;
+    }
+
+    /* ===== TEMA INVENTARIO ===== */
+    body.inventory-mode {
+      background: linear-gradient(135deg, #1295ec, #f0f9ff);
+      animation: fadeIn 0.8s ease-in;
+    }
+
+    .wide {
+      width: 1000px;
+      height: 600px;
+      animation: fadeIn 0.8s ease-in;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      animation: fadeIn 0.8s ease-in;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container" id="app"></div>
+
+  <script>
+    /* ===============================
+       VARIABILI E DATI
+    =============================== */
+    let isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+    let products = JSON.parse(localStorage.getItem('products')) || [];
+    let editingId = null;
+
+    /* ===============================
+       FUNZIONE PRINCIPALE
+    =============================== */
+    function renderView() {
+      const app = document.getElementById('app');
+      app.innerHTML = '';
+
+      if (!isLoggedIn) {
+        document.body.classList.remove('inventory-mode');
+        renderLogin();
+      } else {
+        document.body.classList.add('inventory-mode');
+        renderInventory();
+      }
+    }
+
+    /* ===============================
+       LOGIN
+    =============================== */
+    function renderLogin() {
+      const app = document.getElementById('app');
+      app.classList.remove('wide');
+      app.innerHTML = `
+        <h2>Accesso Utente</h2>
+        <input id="user" placeholder="Username">
+        <input id="pass" placeholder="Password" type="password">
+        <button onclick="handleLogin()">Accedi</button>
+        <div class="footer">Utente demo: <b>Giovanni / password</b></div>
+      `;
+    }
+   function showPop(message, color = "#ef4444") {
+  // cerca popup esistente
+  let pop = document.querySelector(".pop");
+
+  // se non esiste, crealo
+  if (!pop) {
+    pop = document.createElement("div");
+    pop.className = "pop";
+    document.body.appendChild(pop);
+  }
+
+  // aggiorna testo e colore
+  pop.textContent = message;
+  pop.style.background = color;
+
+  // resetta eventuale timer precedente
+  clearTimeout(pop.hideTimeout);
+
+  // mostra popup (fade-in)
+  requestAnimationFrame(() => pop.classList.add("show"));
+
+  // nasconde dopo 2.5 secondi
+  pop.hideTimeout = setTimeout(() => {
+    pop.classList.remove("show");
+  }, 2500);
+}
+
+    function handleLogin() {
+      const user = document.getElementById('user').value;
+      const pass = document.getElementById('pass').value;
+      if (user === 'Giovanni' && pass === 'password') {
+        isLoggedIn = true;
+        localStorage.setItem('isLoggedIn', 'true');
+        renderView();
+      } else {
+        showPop('❌ Credenziali errate!');
+      }
+    }
+    /* ===============================
+       INVENTARIO (CRUD COMPLETO)
+    =============================== */
+    function renderInventory() {
+      const app = document.getElementById('app');
+      app.classList.add('wide');
+
+      let rows = products.map(p => `
+        <tr>
+          <td>${p.id}</td>
+          <td>${p.name}</td>
+          <td>${p.description}</td>
+          <td>${p.price} €</td>
+          <td>${p.stock}</td>
+          <td>
+            <button onclick="editProduct(${p.id})">Modifica</button>
+            <button class="delete-btn" onclick="deleteProduct(${p.id})">Elimina</button>
+          </td>
+        </tr>
+      `).join('');
+
+      app.innerHTML = `
+        <h2>Gestione Inventario</h2>
+        <div class="grid">
+          <input id="name" placeholder="Nome prodotto">
+          <input id="description" placeholder="Descrizione">
+          <input id="price" placeholder="Prezzo (€)" type="number" min="0">
+          <input id="stock" placeholder="Quantità" type="number" min="0">
+        </div>
+        <button onclick="saveProduct()">Salva prodotto</button>
+
+        <table>
+          <tr>
+            <th>ID</th><th>Nome</th><th>Descrizione</th><th>Prezzo</th><th>Stock</th><th>Azioni</th>
+          </tr>
+          ${rows || '<tr><td colspan="6">Nessun prodotto presente</td></tr>'}
+        </table>
+
+        <button class="logout-btn" onclick="logout()">Logout</button>
+      `;
+    }
+
+    /* === CREA / AGGIORNA PRODOTTO === */
+    function saveProduct() {
+      const name = document.getElementById('name').value.trim();
+      const description = document.getElementById('description').value.trim();
+      const price = parseFloat(document.getElementById('price').value);
+      const stock = parseInt(document.getElementById('stock').value);
+
+      
+      if (!name || !description || isNaN(price) || isNaN(stock)) {
+        showPop("⚠️ Compila tutti i campi correttamente!");
+        return;
+      }
+
+      if (editingId) {
+        const index = products.findIndex(p => p.id === editingId);
+        products[index] = { id: editingId, name, description, price, stock };
+        editingId = null;
+      } else {
+        const id = Date.now();
+        products.push({ id, name, description, price, stock });
+      }
+
+      saveProducts();
+      renderInventory();
+    }
+
+    /* === MODIFICA === */
+    function editProduct(id) {
+      const product = products.find(p => p.id === id);
+      document.getElementById('name').value = product.name;
+      document.getElementById('description').value = product.description;
+      document.getElementById('price').value = product.price;
+      document.getElementById('stock').value = product.stock;
+      editingId = id;
+    }
+
+    /* === ELIMINA === */
+    function deleteProduct(id) {
+      products = products.filter(p => p.id !== id);
+      saveProducts();
+      renderInventory();
+    }
+
+    /* === LOGOUT === */
+    function logout() {
+      isLoggedIn = false;
+      localStorage.setItem('isLoggedIn', 'false');
+      renderView();
+    }
+   
+
+    /* === SALVA DATI NEL LOCALSTORAGE === */
+    function saveProducts() {
+      localStorage.setItem('products', JSON.stringify(products));
+    }
+
+    /* === AVVIO === */
+    renderView();
+  </script>
+</body>
+</html>
